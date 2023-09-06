@@ -2,8 +2,8 @@ from typing import Tuple
 import numpy as np 
 
 class BiPoint:
-
-    def __init__(self, vertices: np.ndarray | Tuple[np.ndarray]) -> None:
+                        #vertices: np.ndarray or Tuple[np.ndarray]
+    def __init__(self, vertices: np.ndarray) -> None:
         self.vertices = vertices if isinstance(vertices, np.ndarray) else np.vstack(vertices)
         self._norms = np.linalg.norm(self.vertices, axis=1, keepdims=True) 
         self._normed = self.vertices / self._norms
@@ -50,8 +50,8 @@ class BiPoint:
         return cls(vertices).get_cosecant()
     
 class TriPoint:
-
-    def __init__(self, vertices: np.ndarray | Tuple[np.ndarray]) -> None:
+                        #vertices: np.ndarray or Tuple[np.ndarray]
+    def __init__(self, vertices: np.ndarray ) -> None:
         self.vertices = vertices if isinstance(vertices, np.ndarray) else np.vstack(vertices)
         self._lengths = self.get_lenghts()
         self._vectors = self.vertices[1:] - self.vertices[0][np.newaxis, :]
