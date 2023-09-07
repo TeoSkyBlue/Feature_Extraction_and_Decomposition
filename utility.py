@@ -7,6 +7,8 @@ from scipy.sparse import csr_matrix, lil_matrix, diags, eye
 from scipy.sparse.linalg import eigs, eigsh
 from scipy.linalg import eig
 from random import sample
+import heapq
+
 
 
 def create_test_mesh():
@@ -239,16 +241,55 @@ def add_shortcut_edges(triangles, vertices):
         pass
     pass
 
-def geodesic_dijkstra(vertices, mesh):
-    
-    g_u = float('inf') * np.ones(len(vertices))
-    base_vertices_num = round(len(g_u)/6)
-    # base_vertices
-    base_vertices = np.asarray(mesh.sample_points_uniformly(base_vertices_num).points)
-    #get base indexes (N complexity)
-    #
 
-    pass
+
+def geodesic_dijkstra(vertices, triangles, S_area):
+    V_LIST_NON_EMPTY = 1
+    r_threshold = np.sqrt(0.0025 * S_area)
+    print("r:", r_threshold)
+    A_matrix = adjacency_matrix(triangles)
+
+    #Initialize g(u) to infinity for all indexes
+    g_u = float('inf') * np.ones(len(vertices))
+    visited = np.zeros(len(vertices)) #idxs of visited vertices
+    vlist = []
+    # vlist = vertices.copy()
+    # vlist = heapq.heapify(vlist)
+    #Base0 is vertex 0. Initialize first base to 0
+    index = 0
+    g_u[index] = 0
+    visited[index] = 1
+    
+    vlist.append(index)
+    bases_counter = 0
+    # vlist = heapq.heapify(vlist)
+
+    while sum(visited) < len(visited):
+        while V_LIST_NON_EMPTY:
+            u = vlist.pop()
+            neighbours_u = A_matrix[u, :].toarray()
+            neighbours_u = neighbours_u.nonzero()[1]
+            for ua in neighbours_u:
+                dist_check = g_u[u] + np.linalg.norm(vertices[u] - vertices[ua])
+                visited[ua] = 1
+                if (g_u[ua] > dist_check):
+                    g_u[ua] = dist_check
+                    if (g_u[ua] < r_threshold):
+                        if(len(vlist) == 0 or g_u[vlist[-1]] <= g_u[ua]):
+                            vlist.append(ua)
+                        elif (g_u[vlist[-1]] > g_u[ua]):
+                            vlist.insert(-1, ua)
+            V_LIST_NON_EMPTY = len(vlist)
+        new_base = np.where(visited == 0)[0][0]
+        visited[new_base] = 1
+        bases_counter += 1
+        vlist.append(new_base)
+    print("Based on ", bases_counter, " bases.")
+    ##TBC
+
+                       
+
+
 
 
 if __name__ == "__main__":

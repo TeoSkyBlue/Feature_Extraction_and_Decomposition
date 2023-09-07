@@ -549,9 +549,11 @@ class AppWindow:
 
     def _topological_analysis(self):
         if self.geometry is not None:
+            S_area = self.geometry.get_surface_area()
+            print("Mesh Surface Area: ", S_area)
             ##Shortcut edges are ommited, estimation error increased.
             # U.add_shortcut_edges(self.triangles, self.vertices)
-            U.geodesic_dijkstra(self.vertices, self.geometry)
+            U.geodesic_dijkstra(self.vertices, self.triangles, S_area)
 
         pass
 
