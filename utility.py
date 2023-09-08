@@ -245,7 +245,7 @@ def add_shortcut_edges(triangles, vertices):
 
 def geodesic_dijkstra(vertices, triangles, S_area):
     V_LIST_NON_EMPTY = 1
-    r_threshold = np.sqrt(0.0025 * S_area)
+    r_threshold = np.sqrt(0.5 * S_area)
     print("r:", r_threshold)
     A_matrix = adjacency_matrix(triangles)
 
@@ -285,6 +285,8 @@ def geodesic_dijkstra(vertices, triangles, S_area):
         bases_counter += 1
         vlist.append(new_base)
     print("Based on ", bases_counter, " bases.")
+    print("vertices: ", len(vertices))
+    # m_u = sum(g_u) 
     ##TBC
 
                        
