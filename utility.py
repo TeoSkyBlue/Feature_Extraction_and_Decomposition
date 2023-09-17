@@ -245,47 +245,72 @@ def add_shortcut_edges(triangles, vertices):
 
 def geodesic_dijkstra(vertices, triangles, S_area):
     V_LIST_NON_EMPTY = 1
-    r_threshold = np.sqrt(0.5 * S_area)
+    r_threshold = np.sqrt(0.005 * S_area)
     print("r:", r_threshold)
     A_matrix = adjacency_matrix(triangles)
 
     #Initialize g(u) to infinity for all indexes
     g_u = float('inf') * np.ones(len(vertices))
-    visited = np.zeros(len(vertices)) #idxs of visited vertices
+    unvisited_vertices = np.zeros(len(vertices)) #idxs of visited vertices
     vlist = []
     # vlist = vertices.copy()
     # vlist = heapq.heapify(vlist)
     #Base0 is vertex 0. Initialize first base to 0
-    index = 0
-    g_u[index] = 0
-    visited[index] = 1
-    
-    vlist.append(index)
-    bases_counter = 0
-    # vlist = heapq.heapify(vlist)
+    last_index = 0
+    g_u[last_index] = 0
+    # visited[index] = 1
+    base_points = []
 
-    while sum(visited) < len(visited):
-        while V_LIST_NON_EMPTY:
-            u = vlist.pop()
-            neighbours_u = A_matrix[u, :].toarray()
-            neighbours_u = neighbours_u.nonzero()[1]
-            for ua in neighbours_u:
-                dist_check = g_u[u] + np.linalg.norm(vertices[u] - vertices[ua])
-                visited[ua] = 1
-                if (g_u[ua] > dist_check):
-                    g_u[ua] = dist_check
-                    if (g_u[ua] < r_threshold):
-                        if(len(vlist) == 0 or g_u[vlist[-1]] <= g_u[ua]):
-                            vlist.append(ua)
-                        elif (g_u[vlist[-1]] > g_u[ua]):
-                            vlist.insert(-1, ua)
-            V_LIST_NON_EMPTY = len(vlist)
-        new_base = np.where(visited == 0)[0][0]
-        visited[new_base] = 1
-        bases_counter += 1
-        vlist.append(new_base)
-    print("Based on ", bases_counter, " bases.")
-    print("vertices: ", len(vertices))
+    vlist.append(last_index)
+    bases_counter = 0
+    base_points_length = 0
+    # vlist = heapq.heapify(vlist)
+    runtime = True
+    while(runtime):
+        j = last_index
+        temporary_point = None
+        while (j < len(unvisited_vertices)):
+            if (unvisited_vertices[j]!= 1):
+                temp = vertices[j]
+                last_index = j
+                break
+            j+= 1
+        if(temporary_point != None):
+            temp_int = j
+            if(base_points_length >= len(base_points)):
+                #weird expansions
+                pass
+            base_points[base_points_length] = temporary_point
+            minHeapVLIST = [[float('inf'), vertex_index] for vertex_index in range(len(vertices))]
+            g_values[base_points_length] = calculateShortestPath(temp_int, minHeapVLIST)
+            #g_values is 2D matrix where oneD is bases and second is distance of all vertices
+            #to that base.
+            
+
+
+
+    # while sum(visited) < len(visited):
+    #     while V_LIST_NON_EMPTY:
+    #         u = vlist.pop()
+    #         neighbours_u = A_matrix[u, :].toarray()
+    #         neighbours_u = neighbours_u.nonzero()[1]
+    #         for ua in neighbours_u:
+    #             dist_check = g_u[u] + np.linalg.norm(vertices[u] - vertices[ua])
+    #             visited[ua] = 1
+    #             if (g_u[ua] > dist_check):
+    #                 g_u[ua] = dist_check
+    #                 if (g_u[ua] < r_threshold):
+    #                     if(len(vlist) == 0 or g_u[vlist[-1]] <= g_u[ua]):
+    #                         vlist.append(ua)
+    #                     elif (g_u[vlist[-1]] > g_u[ua]):
+    #                         vlist.insert(-1, ua)
+    #         V_LIST_NON_EMPTY = len(vlist)
+    #     new_base = np.where(visited == 0)[0][0]
+    #     visited[new_base] = 1
+    #     bases_counter += 1
+    #     vlist.append(new_base)
+    # print("Based on ", bases_counter, " bases.")
+    # print("vertices: ", len(vertices))
     # m_u = sum(g_u) 
     ##TBC
 
