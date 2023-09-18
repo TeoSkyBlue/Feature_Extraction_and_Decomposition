@@ -245,22 +245,24 @@ def add_shortcut_edges(triangles, vertices):
 
 def geodesic_dijkstra(vertices, triangles, S_area):
     V_LIST_NON_EMPTY = 1
+    vertlen = len(vertices)
     r_threshold = np.sqrt(0.005 * S_area)
     print("r:", r_threshold)
     A_matrix = adjacency_matrix(triangles)
 
-    #Initialize g(u) to infinity for all indexes
-    g_u = float('inf') * np.ones(len(vertices))
-    unvisited_vertices = np.zeros(len(vertices)) #idxs of visited vertices
+   
+    unvisited_vertices = np.zeros(vertlen) #idxs of visited vertices
+    mu_values = np.zeros(vertlen)
+    g_values = []
     vlist = []
     # vlist = vertices.copy()
     # vlist = heapq.heapify(vlist)
     #Base0 is vertex 0. Initialize first base to 0
     last_index = 0
-    g_u[last_index] = 0
+    # g_u[last_index] = 0
     # visited[index] = 1
     base_points = []
-
+    
     vlist.append(last_index)
     bases_counter = 0
     base_points_length = 0
@@ -281,8 +283,9 @@ def geodesic_dijkstra(vertices, triangles, S_area):
                 #weird expansions
                 pass
             base_points[base_points_length] = temporary_point
-            minHeapVLIST = [[float('inf'), vertex_index] for vertex_index in range(len(vertices))]
-            g_values[base_points_length] = calculateShortestPath(temp_int, minHeapVLIST)
+            minHeapVLIST = [[float('inf'), vertex_index] for vertex_index in range(vertlen)]
+            g_values[base_points_length] = calculateShortestPath(temp_int, minHeapVLIST, vertlen, A_matrix,
+                                                                  r_threshold, unvisited_vertices)
             #g_values is 2D matrix where oneD is bases and second is distance of all vertices
             #to that base.
             
@@ -314,7 +317,52 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     # m_u = sum(g_u) 
     ##TBC
 
-                       
+def calculateShortestPath(base_vertex_index, VLIST, vertlen,
+                           A_matrix, vertices, r_threshold,
+                             unvisited_vertices):
+    #Initialize g(u) to infinity for all indexes
+    KEY = 0
+    INDEX = 1
+
+    g_bu = float('inf') * np.ones(vertlen)
+    VLIST[base_vertex_index][0] = 0
+    heapq.heapify(VLIST)
+    while(len(VLIST)!= 0):
+        smallest = VLIST.pop()
+        g_V = smallest[KEY]
+        if(g_bu[smallest[INDEX]] > smallest[KEY]):
+            g_bu[smallest[INDEX]] = smallest[KEY]
+        neighbours_u = A_matrix[smallest[INDEX], :].toarray()
+        neighbours_u = neighbours_u.nonzero()[1]
+        for neighbour in neighbours_u:
+            length_VVa = np.linalg.norm(vertices[smallest[INDEX]] - vertices[neighbour])
+            g_Va = g_bu[neighbour]
+
+        if(g_Va > g_V + length_VVa):
+            g_bu[neighbour] = g_V + length_VVa
+            #Decrease Key:
+            if (VLIST[neighbour][KEY] < g_bu[neighbour]):
+                VLIST[neighbour][KEY] = g_bu[neighbour]
+                heapq.heapify(VLIST)
+
+    base_ver = vertices[base_vertex_index]
+    #create array of vertices in the area
+
+    points_in_area_length = 0
+    points_in_area = []
+    #Check if vertex is within area bounds
+    for vertex_index, distance in enumerate(g_bu):
+        if(distance <= r_threshold):
+            #check if it has already been included in the area
+            if (unvisited_vertices[vertex_index] and 
+                vertex_index != base_vertex_index):
+                points_in_area[points_in_area_length] = vertex_index
+                points_in_area_length+= 1
+
+            unvisited_vertices[vertex_index] = 0
+        #Here come some expansions, is this just appends?
+        # Can you do those in a more sophisticated manner?        
+
 
 
 
