@@ -8,6 +8,8 @@ from scipy.sparse.linalg import eigs, eigsh
 from scipy.linalg import eig
 from random import sample
 import heapq
+import numpy_tricks as npt
+
 
 
 
@@ -251,15 +253,16 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     A_matrix = adjacency_matrix(triangles)
     # base_areas = np.zeros(10)
    
-    unvisited_vertices = np.ones(vertlen) #idxs of visited vertices
-    mu_values = np.zeros(vertlen)
+    unvisited_vertices = np.ones(vertlen, dtype = np.int8) #idxs of visited vertices
+    base_default = 200
 
-    g_values = np.array([])
-    #NEEDS TO BE 2D ARRAY.
+    g_values = -np.ones((base_default, vertlen), dtype = np.float128)
+    mu_values = np.empty(vertlen, dtype = np.float128)
+    
+    
 
-
-    base_points = np.array([])
-    base_areas = np.array([])
+    base_points = -np.ones(base_default, dtype = np.int32)
+    base_areas = np.empty(base_default, dtype = np.int32)
     # vlist = []
     # vlist = vertices.copy()
     # vlist = heapq.heapify(vlist)
@@ -270,37 +273,51 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     
     
     # vlist.append(last_index)
-    bases_counter = 0
     base_points_length = 0
     # vlist = heapq.heapify(vlist)
     runtime = True
     while(runtime):
         j = last_index
         temporary_point = None
-        while (j < len(unvisited_vertices)):
+        while (j < vertlen):
             if (unvisited_vertices[j]):
                 temporary_point = vertices[j]
                 last_index = j
                 break
             j+= 1
-        if(temporary_point):
+        if(temporary_point is not None):
             temp_int = j
-            if(base_points_length >= len(base_points)):
+
+            if(base_points_length >= (len(base_points) - 1)):
                 #weird expansions
-                pass
-            base_points[base_points_length] = temporary_point
+                print("You're getting cooked.")
+                npt.expand_base_empty(base_points, 1)
+                npt.expand_base_empty(base_areas, 1)
+                npt.expand_rows(g_values, 1)
+
+            #Contrast to the original implementation, we use the index to represent base. 
+            base_points[base_points_length] = temp_int #was temporary_point
+
             minHeapVLIST = [[float('inf'), vertex_index] for vertex_index in range(vertlen)]
-            g_values[base_points_length] = calculateShortestPath(temp_int, minHeapVLIST, vertlen, A_matrix,
-                                                                  r_threshold, unvisited_vertices, base_areas)
+            #populate base point row with its g_values
+            g_values[base_points_length, : vertlen] = calculateShortestPath(temp_int, minHeapVLIST, vertlen, A_matrix,
+                                                                  vertices, triangles, r_threshold, unvisited_vertices,
+                                                                    base_areas, base_points_length)
             #g_values is 2D matrix where oneD is bases and second is distance of all vertices
             #to that base.
             base_points_length += 1
+        if((base_points_length % 100) == 0):
+            print(base_points_length)
         else:
             runtime = False
-            
+    
+    print("Total number of base points:", base_points_length)
 
 
 
+
+
+    # DEPRECATED LOGIC
     # while sum(visited) < len(visited):
     #     while V_LIST_NON_EMPTY:
     #         u = vlist.pop()
@@ -327,20 +344,24 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     ##TBC
 
 def calculateShortestPath(base_vertex_index, VLIST, vertlen,
-                           A_matrix, vertices, r_threshold,
+                           A_matrix, vertices, triangles, r_threshold,
                              unvisited_vertices, base_areas, base_points_length):
     #Initialize g(u) to infinity for all indexes
     KEY = 0
     INDEX = 1
 
     g_bu = float('inf') * np.ones(vertlen)
+
+    #VLIST is 2D, [[key = value, index = vertex_index]]
     VLIST[base_vertex_index][0] = 0
     heapq.heapify(VLIST)
-    while(len(VLIST)!= 0):
+    while(len(VLIST)):
         smallest = VLIST.pop()
         g_V = smallest[KEY]
+
         if(g_bu[smallest[INDEX]] > smallest[KEY]):
             g_bu[smallest[INDEX]] = smallest[KEY]
+
         neighbours_u = A_matrix[smallest[INDEX], :].toarray()
         neighbours_u = neighbours_u.nonzero()[1]
         for neighbour in neighbours_u:
@@ -349,86 +370,109 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
 
         if(g_Va > g_V + length_VVa):
             g_bu[neighbour] = g_V + length_VVa
-            #Decrease Key:
-            if (VLIST[neighbour][KEY] < g_bu[neighbour]):
-                VLIST[neighbour][KEY] = g_bu[neighbour]
-                heapq.heapify(VLIST)
 
-    base_ver = vertices[base_vertex_index]
-    #create array of vertices in the area
+            #Decrease Key:
+            #This method has linear search accross large heap, 
+            #But I believe the converter idea is equally stinky.
+
+            decrease_key(VLIST, neighbour, g_bu[neighbour])
+            # if (VLIST[neighbour][KEY] < g_bu[neighbour]):
+            #     VLIST[neighbour][KEY] = g_bu[neighbour]
+            #     heapq.heapify(VLIST)
+
+    # base_ver = vertices[base_vertex_index]
+    # create array of vertices in the area
 
     points_in_area_length = 0
-    points_in_area = []
+    points_in_area = -np.ones(2000, dtype = np.int32)
+
     #Check if vertex is within area bounds
     for vertex_index, distance in enumerate(g_bu):
         if(distance <= r_threshold):
             #check if it has already been included in the area
             if (unvisited_vertices[vertex_index] and 
                 vertex_index != base_vertex_index):
+                #check the sizing
+                if(points_in_area_length >= len(points_in_area)):
+                    npt.expand_base_mones(points_in_area, 500)
                 points_in_area[points_in_area_length] = vertex_index
                 points_in_area_length+= 1
 
             unvisited_vertices[vertex_index] = 0
-        #Here come some expansions, is this just appends?
-        # Can you do those in a more sophisticated manner?   
-        # Answer: Yes, expand numpy utility. Untested.
+
+        #Cant say Im sure as to why but in their implementation they repeat
+        # this line here.        
+        if(points_in_area_length >= len(points_in_area)):
+                    npt.expand_base_mones(points_in_area, 500)
+
         points_in_area[points_in_area_length] = base_vertex_index
         points_in_area_length+= 1
         # 0 is that it is no longer 'unvisited'
         unvisited_vertices[base_vertex_index] = 0 
-        calculateBaseArea(points_in_area, points_in_area_length, vertices, base_areas, base_points_length)
+        calculateBaseArea(points_in_area, points_in_area_length, vertices,
+                           triangles,  base_areas, base_points_length, A_matrix)
         return g_bu
 
 
 
-def calculateBaseArea(points_in_area, points_in_area_length, vertices, base_areas, base_points_length):
+def calculateBaseArea(points_in_area, points_in_area_length, vertices, triangles, 
+                       base_areas, base_points_length, A_matrix):
     area = 0
+    vertlen = len(vertices)
     for pointIndex in points_in_area:
         indexA = pointIndex
-        adj1 = adjacency_matrix_sparse[indexA]
-        len1 = adj1[0]
-        for j in range(len1):
-            indexB = adj1[j]
-            if(indexA > indexB):
-                adj2 = adjacency_matrix_sparse[indexB]
-                len2 = adj2[0]
-                for k in range(len2):
-                    indexC = adj2[k]
-                    if (indexB > indexC and isConnected(indexC, indexA)):
-                        area = area + calculateTrigArea(vertices[indexA], vertices[indexB], vertices[indexC])
+        neighbours_A = A_matrix[indexA, :].toarray()
+        neighbours_A = neighbours_A.nonzero()[1]
+        for neighbour_A in neighbours_A:
+            indexB = neighbour_A
+
+            neighbours_B = A_matrix[indexB, :].toarray()
+            neighbours_B = neighbours_B.nonzero()[1]
+            for neighbour_B in neighbours_B:
+                indexC = neighbour_B
+
+                if (indexA != indexB and indexB != indexC and indexC != indexA):
+                    area = area + calculateTrigArea(vertices[indexA], vertices[indexB], vertices[indexC])
+
+
+        # Yeah, not gonna bother with csr format this time, buddy.
+        # The triangle ordering could hurt down the line, still.
+        # adj1 = adjacency_matrix_sparse(triangles, vertlen)[indexA]
+        # len1 = adj1[0]
+        # for j in range(len1):
+        #     indexB = adj1[j]
+        #     if(indexA > indexB):
+        #         adj2 = adjacency_matrix_sparse(triangles, vertlen)[indexB]
+        #         len2 = adj2[0]
+        #         for k in range(len2):
+        #             indexC = adj2[k]
+        #             if (indexB > indexC and isConnected(indexC, indexA)):
+        #                 area = area + calculateTrigArea(vertices[indexA], vertices[indexB], vertices[indexC])
     if (points_in_area_length == 0):
         area = 0
     if (points_in_area_length == 1):
         area = 1
     if (points_in_area_length == 2):
         area = 2
-    the_area = the_area + area
+    
     
     base_areas[base_points_length] = area
 
 
-def isConnected(index1, index2):
-    adj = adjacency_matrix_sparse[index1]
-    len = adj[0]
-    for i in range(len):
-        if(adj[i] == index2):
-            return True
-    
-    return False
 
 def calculateTrigArea(A, B, C):
 
-    a = np.sqrt(np.pow(C.x - B.x, 2)
-                +np.pow(C.y - B.y, 2)
-                +np.pow(C.z - B.z, 2))
+    a = np.sqrt(np.power(C[0] - B[0], 2)
+                +np.power(C[1] - B[1], 2)
+                +np.power(C[2] - B[2], 2))
     
-    b = np.sqrt(np.pow(A.x - C.x, 2)
-                +np.pow(A.y - C.y, 2)
-                +np.pow(A.z - C.z, 2))
+    b = np.sqrt(np.power(A[0] - C[0], 2)
+                +np.power(A[1] - C[1], 2)
+                +np.power(A[2] - C[2], 2))
     
-    c = np.sqrt(np.pow(A.x - B.x, 2)
-                +np.pow(A.y - B.y, 2)
-                +np.pow(A.z - B.z, 2))
+    c = np.sqrt(np.power(A[0] - B[0], 2)
+                +np.power(A[1] - B[1], 2)
+                +np.power(A[2] - B[2], 2))
     
     p = (a + b + c) / 2
     area = (p *(p - a) * (p - b) * (p - c))
@@ -441,7 +485,18 @@ def calculateTrigArea(A, B, C):
     return area
 
 
-
+def decrease_key(VLIST, neighbour_index, distance_check):
+    KEY = 0
+    INDEX = 1
+    vlist_index = 0
+    for item in VLIST:
+        if (item[INDEX] == neighbour_index):
+            if(VLIST[vlist_index][KEY] < distance_check):
+                VLIST[vlist_index][KEY] = distance_check
+                heapq.heapify(VLIST)
+            break
+        vlist_index += 1
+    return
 
 
 if __name__ == "__main__":

@@ -554,8 +554,8 @@ class AppWindow:
             ##Shortcut edges are ommited, estimation error increased.
             # U.add_shortcut_edges(self.triangles, self.vertices)
             U.geodesic_dijkstra(self.vertices, self.triangles, S_area)
-
-        pass
+            print("Wait, that worked?")
+        
 
 def main():
 
