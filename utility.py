@@ -249,21 +249,27 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     r_threshold = np.sqrt(0.005 * S_area)
     print("r:", r_threshold)
     A_matrix = adjacency_matrix(triangles)
-
+    # base_areas = np.zeros(10)
    
-    unvisited_vertices = np.zeros(vertlen) #idxs of visited vertices
+    unvisited_vertices = np.ones(vertlen) #idxs of visited vertices
     mu_values = np.zeros(vertlen)
-    g_values = []
-    vlist = []
+
+    g_values = np.array([])
+    #NEEDS TO BE 2D ARRAY.
+
+
+    base_points = np.array([])
+    base_areas = np.array([])
+    # vlist = []
     # vlist = vertices.copy()
     # vlist = heapq.heapify(vlist)
     #Base0 is vertex 0. Initialize first base to 0
     last_index = 0
     # g_u[last_index] = 0
     # visited[index] = 1
-    base_points = []
     
-    vlist.append(last_index)
+    
+    # vlist.append(last_index)
     bases_counter = 0
     base_points_length = 0
     # vlist = heapq.heapify(vlist)
@@ -272,12 +278,12 @@ def geodesic_dijkstra(vertices, triangles, S_area):
         j = last_index
         temporary_point = None
         while (j < len(unvisited_vertices)):
-            if (unvisited_vertices[j]!= 1):
-                temp = vertices[j]
+            if (unvisited_vertices[j]):
+                temporary_point = vertices[j]
                 last_index = j
                 break
             j+= 1
-        if(temporary_point != None):
+        if(temporary_point):
             temp_int = j
             if(base_points_length >= len(base_points)):
                 #weird expansions
@@ -285,9 +291,12 @@ def geodesic_dijkstra(vertices, triangles, S_area):
             base_points[base_points_length] = temporary_point
             minHeapVLIST = [[float('inf'), vertex_index] for vertex_index in range(vertlen)]
             g_values[base_points_length] = calculateShortestPath(temp_int, minHeapVLIST, vertlen, A_matrix,
-                                                                  r_threshold, unvisited_vertices)
+                                                                  r_threshold, unvisited_vertices, base_areas)
             #g_values is 2D matrix where oneD is bases and second is distance of all vertices
             #to that base.
+            base_points_length += 1
+        else:
+            runtime = False
             
 
 
@@ -319,7 +328,7 @@ def geodesic_dijkstra(vertices, triangles, S_area):
 
 def calculateShortestPath(base_vertex_index, VLIST, vertlen,
                            A_matrix, vertices, r_threshold,
-                             unvisited_vertices):
+                             unvisited_vertices, base_areas, base_points_length):
     #Initialize g(u) to infinity for all indexes
     KEY = 0
     INDEX = 1
@@ -361,7 +370,75 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
 
             unvisited_vertices[vertex_index] = 0
         #Here come some expansions, is this just appends?
-        # Can you do those in a more sophisticated manner?        
+        # Can you do those in a more sophisticated manner?   
+        # Answer: Yes, expand numpy utility. Untested.
+        points_in_area[points_in_area_length] = base_vertex_index
+        points_in_area_length+= 1
+        # 0 is that it is no longer 'unvisited'
+        unvisited_vertices[base_vertex_index] = 0 
+        calculateBaseArea(points_in_area, points_in_area_length, vertices, base_areas, base_points_length)
+        return g_bu
+
+
+
+def calculateBaseArea(points_in_area, points_in_area_length, vertices, base_areas, base_points_length):
+    area = 0
+    for pointIndex in points_in_area:
+        indexA = pointIndex
+        adj1 = adjacency_matrix_sparse[indexA]
+        len1 = adj1[0]
+        for j in range(len1):
+            indexB = adj1[j]
+            if(indexA > indexB):
+                adj2 = adjacency_matrix_sparse[indexB]
+                len2 = adj2[0]
+                for k in range(len2):
+                    indexC = adj2[k]
+                    if (indexB > indexC and isConnected(indexC, indexA)):
+                        area = area + calculateTrigArea(vertices[indexA], vertices[indexB], vertices[indexC])
+    if (points_in_area_length == 0):
+        area = 0
+    if (points_in_area_length == 1):
+        area = 1
+    if (points_in_area_length == 2):
+        area = 2
+    the_area = the_area + area
+    
+    base_areas[base_points_length] = area
+
+
+def isConnected(index1, index2):
+    adj = adjacency_matrix_sparse[index1]
+    len = adj[0]
+    for i in range(len):
+        if(adj[i] == index2):
+            return True
+    
+    return False
+
+def calculateTrigArea(A, B, C):
+
+    a = np.sqrt(np.pow(C.x - B.x, 2)
+                +np.pow(C.y - B.y, 2)
+                +np.pow(C.z - B.z, 2))
+    
+    b = np.sqrt(np.pow(A.x - C.x, 2)
+                +np.pow(A.y - C.y, 2)
+                +np.pow(A.z - C.z, 2))
+    
+    c = np.sqrt(np.pow(A.x - B.x, 2)
+                +np.pow(A.y - B.y, 2)
+                +np.pow(A.z - B.z, 2))
+    
+    p = (a + b + c) / 2
+    area = (p *(p - a) * (p - b) * (p - c))
+
+    if (area < 0):
+        area = 1.0
+
+    area = np.sqrt(area)
+
+    return area
 
 
 
