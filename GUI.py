@@ -11,6 +11,8 @@ import curvature as crv
 import platform
 from scipy.sparse.linalg import eigs, eigsh
 from scipy.linalg import eigh
+import time
+
 
 #Isotropic Dependencies
 from half_edge import HalfEdgeModel
@@ -297,20 +299,20 @@ class AppWindow:
             print("Reconstructed using vertices and ball pivot method")
             return gui.Widget.EventCallbackResult.HANDLED
         
-        #U for curvature mapping
+        #U key for curvature mapping
         elif event.key == 117 and event.type == KeyEvent.Type.UP: 
             self._curvature_mapping()
             print("Colored mesh according to Curvature")
             return gui.Widget.EventCallbackResult.HANDLED
         
-        #I for Isotropic Remeshing
+        #I key for Isotropic Remeshing
         elif event.key == 105 and event.type == KeyEvent.Type.UP:
             self._isotropic_remeshing()
             
             print("Mesh just became meshier.")
             return gui.Widget.EventCallbackResult.HANDLED
         
-        #G for Multiresolutional Reeb Graph Analysis
+        #G key for Multiresolutional Reeb Graph Analysis
         elif event.key == 103 and event.type == KeyEvent.Type.UP:
             self._topological_analysis()
             print("Extracted topological data.")
@@ -551,10 +553,14 @@ class AppWindow:
         if self.geometry is not None:
             S_area = self.geometry.get_surface_area()
             print("Mesh Surface Area: ", S_area)
+            print("Vertices: ", len(self.vertices))
             ##Shortcut edges are ommited, estimation error increased.
             # U.add_shortcut_edges(self.triangles, self.vertices)
+            ta_timer_start = time.process_time()
             U.geodesic_dijkstra(self.vertices, self.triangles, S_area)
-            print("Wait, that worked?")
+            ta_timer_end = time.process_time()
+
+            print("Wait, that worked?Well, it took", ta_timer_end - ta_timer_start, "seconds you know..")
         
 
 def main():
