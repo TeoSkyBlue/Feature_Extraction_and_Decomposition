@@ -262,6 +262,7 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     
 
     base_points = -np.ones(base_default, dtype = np.int32)
+    base_points_length = 0
     base_areas = np.empty(base_default, dtype = np.int32)
     # vlist = []
     # vlist = vertices.copy()
@@ -271,9 +272,12 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     # g_u[last_index] = 0
     # visited[index] = 1
     
+    # debug counters
+    debug_counters = [0, 0, 0]
+
     
     # vlist.append(last_index)
-    base_points_length = 0
+    
     # vlist = heapq.heapify(vlist)
     runtime = True
     while(runtime):
@@ -285,6 +289,7 @@ def geodesic_dijkstra(vertices, triangles, S_area):
                 last_index = j
                 break
             j+= 1
+        
         if(temporary_point is not None):
             temp_int = j
 
@@ -302,13 +307,13 @@ def geodesic_dijkstra(vertices, triangles, S_area):
             #populate base point row with its g_values
             g_values[base_points_length, : vertlen] = calculateShortestPath(temp_int, minHeapVLIST, vertlen, A_matrix,
                                                                   vertices, triangles, r_threshold, unvisited_vertices,
-                                                                    base_areas, base_points_length)
+                                                                    base_areas, base_points_length, debug_counters)
             #g_values is 2D matrix where oneD is bases and second is distance of all vertices
             #to that base.
             base_points_length += 1
-        if((base_points_length % 100) == 0):
-            print(base_points_length)
-        else:
+            if((base_points_length % 10) == 0):
+                print(base_points_length)
+        elif(temporary_point is None):
             runtime = False
     
     print("Total number of base points:", base_points_length)
@@ -345,7 +350,7 @@ def geodesic_dijkstra(vertices, triangles, S_area):
 
 def calculateShortestPath(base_vertex_index, VLIST, vertlen,
                            A_matrix, vertices, triangles, r_threshold,
-                             unvisited_vertices, base_areas, base_points_length):
+                             unvisited_vertices, base_areas, base_points_length, debug_counters):
     #Initialize g(u) to infinity for all indexes
     KEY = 0
     INDEX = 1
@@ -356,7 +361,7 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
     VLIST[base_vertex_index][0] = 0
     heapq.heapify(VLIST)
     while(len(VLIST)):
-        smallest = VLIST.pop()
+        smallest = heapq.heappop(VLIST)
         g_V = smallest[KEY]
 
         if(g_bu[smallest[INDEX]] > smallest[KEY]):
@@ -367,9 +372,9 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
         for neighbour in neighbours_u:
             length_VVa = np.linalg.norm(vertices[smallest[INDEX]] - vertices[neighbour])
             g_Va = g_bu[neighbour]
-
-        if(g_Va > g_V + length_VVa):
-            g_bu[neighbour] = g_V + length_VVa
+            #Main check
+            if(g_Va > g_V + length_VVa):
+                g_bu[neighbour] = g_V + length_VVa
 
             #Decrease Key:
             #This method has linear search accross large heap, 
@@ -400,24 +405,25 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
 
             unvisited_vertices[vertex_index] = 0
 
-        #Cant say Im sure as to why but in their implementation they repeat
-        # this line here.        
-        if(points_in_area_length >= len(points_in_area)):
-                    npt.expand_base_mones(points_in_area, 500)
+    #Cant say Im sure as to why but in their implementation they repeat
+    # this line here.        
+    if(points_in_area_length >= len(points_in_area)):
+        npt.expand_base_mones(points_in_area, 500)
 
-        points_in_area[points_in_area_length] = base_vertex_index
-        points_in_area_length+= 1
-        # 0 is that it is no longer 'unvisited'
-        unvisited_vertices[base_vertex_index] = 0 
-        calculateBaseArea(points_in_area, points_in_area_length, vertices,
-                           triangles,  base_areas, base_points_length, A_matrix)
-        return g_bu
+    points_in_area[points_in_area_length] = base_vertex_index
+    points_in_area_length+= 1
+    # 0 is that it is no longer 'unvisited'
+    unvisited_vertices[base_vertex_index] = 0 
+    calculateBaseArea(points_in_area, points_in_area_length, vertices,
+                        triangles,  base_areas, base_points_length, A_matrix, debug_counters)
+    return g_bu
 
 
 
 def calculateBaseArea(points_in_area, points_in_area_length, vertices, triangles, 
-                       base_areas, base_points_length, A_matrix):
+                       base_areas, base_points_length, A_matrix, debug_counters):
     area = 0
+    
     vertlen = len(vertices)
     for pointIndex in points_in_area:
         indexA = pointIndex
@@ -452,6 +458,9 @@ def calculateBaseArea(points_in_area, points_in_area_length, vertices, triangles
         area = 0
     if (points_in_area_length == 1):
         area = 1
+        debug_counters[1] += 1
+        if(debug_counters[1] % 10 == 0):
+            print(debug_counters[1])
     if (points_in_area_length == 2):
         area = 2
     
@@ -491,7 +500,7 @@ def decrease_key(VLIST, neighbour_index, distance_check):
     vlist_index = 0
     for item in VLIST:
         if (item[INDEX] == neighbour_index):
-            if(VLIST[vlist_index][KEY] < distance_check):
+            if(VLIST[vlist_index][KEY] > distance_check):
                 VLIST[vlist_index][KEY] = distance_check
                 heapq.heapify(VLIST)
             break
