@@ -6,12 +6,18 @@ from open3d.visualization.rendering import Camera
 import sys
 import os
 import numpy as np
-import utility as U
-import curvature as crv
 import platform
 from scipy.sparse.linalg import eigs, eigsh
 from scipy.linalg import eigh
 import time
+
+#Custom packages and modules
+import utility as U
+import curvature as crv
+
+#Topology Matching Dependencies
+import mu_distances as mud
+import rb_extraction as rbe
 
 
 #Isotropic Dependencies
@@ -529,14 +535,14 @@ class AppWindow:
             print(f'L min = {L_min:.2f} L mean = {L_mean:.2f} L max = {L_max:.2f}')
 
             L = 1*L_mean
-            ITER = 1
+            ITER = 3
 
             remesher.isotropic_remeshing(
                 L, 
                 iter=ITER, 
                 explicit=True, 
-                foldover=20,
-                sliver=True
+                foldover=10,
+                sliver=False
             )
             model.clean()
             _triangle_mesh = o3d.geometry.TriangleMesh(model.vertices, model.triangles)
@@ -557,8 +563,10 @@ class AppWindow:
             ##Shortcut edges are ommited, estimation error increased.
             # U.add_shortcut_edges(self.triangles, self.vertices)
             ta_timer_start = time.process_time()
-            U.geodesic_dijkstra(self.vertices, self.triangles, S_area)
+            mud.geodesic_dijkstra(self.vertices, self.triangles, S_area)
             ta_timer_end = time.process_time()
+
+            # rbe.geodesic_reeb_graph_extraction()
 
             print("Wait, that worked?Well, it took", ta_timer_end - ta_timer_start, "seconds you know..")
         
