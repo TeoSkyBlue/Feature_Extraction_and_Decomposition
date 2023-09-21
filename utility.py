@@ -264,7 +264,7 @@ def geodesic_dijkstra(vertices, triangles, S_area):
 
     base_points = -np.ones(base_default, dtype = np.int32)
     base_points_length = 0
-    base_areas = np.empty(base_default, dtype = np.int32)
+    base_areas = -np.ones(base_default, dtype = np.float64)
     # vlist = []
     # vlist = vertices.copy()
     # vlist = heapq.heapify(vlist)
@@ -415,7 +415,7 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
 
    
     base_area_timer_start = time.process_time()
-    calculateBaseArea(points_in_area, points_in_area_length, vertices,
+    calculateBaseArea_co(points_in_area, points_in_area_length, vertices,
                         triangles,  base_areas, base_points_length, A_matrix, debug_counters)
     base_area_timer_end = time.process_time()
     base_area_timer += base_area_timer_end - base_area_timer_start
@@ -459,6 +459,53 @@ def calculateBaseArea(points_in_area, points_in_area_length, vertices, triangles
     
     
     base_areas[base_points_length] = area
+
+
+def calculateBaseArea_co(points_in_area, points_in_area_length, vertices, triangles, 
+                       base_areas, base_points_length, A_matrix, debug_counters):
+    area = 0
+    
+
+    # flat_triangles = triangles.flatten()
+    # triangles_in_area =  np.intersect1d(flat_triangles, np.where(points_in_area >= 0))
+    valid_points_in_area = points_in_area[np.where(points_in_area >= 0)]
+    # mask = np.all(np.isin(triangles, valid_points_in_area), axis=0)
+    #I want to find in which triangles do the points in the area exist:
+    mask = np.isin(triangles, valid_points_in_area)
+
+    triangles_in_area_mask = np.any(mask, axis = 1)
+    
+    triangles_in_area = triangles[triangles_in_area_mask]
+    # vertices_in_area = vertices[valid_points_in_area]
+    # triangles_in_area_flat = triangles_in_area.flatten()
+    # vertices_in_area = vertices[np.unique(triangles_in_area_flat)]
+    area = calculateAreaFromTriangles(triangles_in_area, vertices)
+
+
+    if (points_in_area_length == 0):
+        area = 0
+        debug_counters[0] += 1
+    if (points_in_area_length == 1):
+        area = 1
+        debug_counters[1] += 1
+        if(debug_counters[1] % 10 == 0):
+            print(debug_counters[1])
+        #At one point early in development this was a great showcase of logical errors.
+    if (points_in_area_length == 2):
+        area = 2
+        debug_counters[2] += 1
+    
+    
+    base_areas[base_points_length] = area
+
+
+def calculateAreaFromTriangles(triangles_in_area, vertices_in_area):
+    area_geometry = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices_in_area), o3d.utility.Vector3iVector(triangles_in_area))
+    area = area_geometry.get_surface_area()
+    return area
+#o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices_in_area), o3d.utility.Vector3iVector(triangles_in_area)).get_surface_area()
+
+    
 
 
 
