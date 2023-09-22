@@ -1,6 +1,7 @@
 from utility import *
 
 
+
 def geodesic_dijkstra(vertices, triangles, S_area):
     
     INF = 100000
@@ -90,6 +91,9 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     print("Total Heap restructuring time:", heap_restructuring_time)
     print("Total cpu time for Base Area Calculations: ", base_area_timer)
     print("Total cpu time for shortest path timer: ", shortest_path_timer)
+    return mu_values, A_matrix
+
+    
 
 
 
@@ -178,7 +182,7 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
     return g_bu, heap_restructuring_time, base_area_timer
 
 
-
+#Incorrect results, excruciatingly slow.
 def calculateBaseArea(points_in_area, points_in_area_length, vertices, triangles, 
                        base_areas, base_points_length, A_matrix, debug_counters):
     area = 0
