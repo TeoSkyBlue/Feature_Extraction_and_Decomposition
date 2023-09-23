@@ -85,13 +85,16 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     for value_index in range(len(mu_values)):
         mu_values[value_index] = calculate_mu(g_values, base_points_length, value_index, base_areas)
     
+    #We normalize with denominator max (as opposed to max - min) for 
+    #less inaccuracy with smaller values
+    normed_mu = (mu_values - np.min(mu_values)) / np.max(mu_values)
     # normalize_mu(mu_values)
     print("Total number of base points:", base_points_length)
 
     print("Total Heap restructuring time:", heap_restructuring_time)
     print("Total cpu time for Base Area Calculations: ", base_area_timer)
     print("Total cpu time for shortest path timer: ", shortest_path_timer)
-    return mu_values, A_matrix
+    return normed_mu, A_matrix
 
     
 
