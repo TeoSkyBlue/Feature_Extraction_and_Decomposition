@@ -18,48 +18,109 @@ def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, mrg
     ranges = np.arange(0, FINEST_RES + 1)/ FINEST_RES
     ranges[FINEST_RES] = 1.0
     
-    resample_inbetweens(vertices, triangles, A_matrix, mu_values, ranges)
+
+    #Resampling Logic
+
+    # This kinda sucks, I know, sorry.
+    triangles_to_keep_mask, new_triangles, new_vertices, new_triangles_counter, new_vertices_counter = resample_inbetweens(vertices, triangles, A_matrix, mu_values, ranges)
+    #add new vertices to data structure
+    np.vstack((vertices, new_vertices[0:new_vertices_counter]))
+    #remove obsolete triangles from data structure
+    triangles = triangles[triangles_to_keep_mask]
+    #add the new triangles
+    np.vstack((triangles, new_triangles[0:new_triangles_counter]))
 
 
 def resample_inbetweens(vertices, triangles, A_matrix, mu_values, ranges):
-    modified_edges_and_vertices = []
-
-    for vertex_index in range(len(vertices)):
-        range1 = gather_range(vertex_index, mu_values, ranges)
-        neighbours = A_matrix[vertex_index, :].toarray()
-        neighbours = neighbours.nonzero()[1]
-        for neighbour in neighbours:
-            range2 = gather_range(neighbour, mu_values, ranges)
-            if(range1 != range2):
-                if(range1 > range2):
-                    new_mu = ranges[range2 + 1]
-                else:
-                    new_mu = ranges[range1 + 1]
-                
-                new_vertex = create_new_vertex(vertices, vertex_index, neighbour, mu_values, new_mu)
-                modified_edge = [vertex_index, neighbour]
-                modified_edges_and_vertices.append((modified_edge, new_vertex, range1))
-    print(len(modified_edges_and_vertices))
-    alter_connections(modified_edges_and_vertices,ranges, vertices, triangles, mu_values new_mu, A_matrix)
     
-    return 
 
-
-def alter_connections(modified_edges_and_vertices, ranges, vertices, triangles, mu_values, new_mu, A_matrix):
-    for edge_in_border in modified_edges_and_vertices:
-        neighbours1 = A_matrix[edge_in_border[0], :].toarray()
-        neighbours1 = neighbours1.nonzero()[1]
-        neighbours2 = A_matrix[edge_in_border[0], :].toarray()
-        neighbours2 = neighbours2.nonzero()[1]
-        c_vertex = np.intersect1d(neighbours1, neighbours2)
-        #edge in border[2] is the range of modified edge[0][0]
-        range1 = gather_range(neighbours1, c_vertex, mu_values, ranges)
-        
-        #I do not cover case in which one triangle borders two areas. This
-        # just shows that we are severely under-sampling.
-
-        if(range1 != edge_in_border[0][0]):
+    triangles_to_keep_mask = np.ones(len(triangles), dtype = bool)
+    # The 6 should be derived experimentally as to be optimal space complexity, 
+    # no time for that at this moment.
+    new_vertices = np.ones((6 *len(vertices),3), dtype = np.float32)
+    new_triangles = np.ones((6 *len(triangles), 3), dtype = np.int32)
+    new_triangles_counter = 0
+    new_vertices_counter = 0
+    for i, triangle in enumerate(triangles):
+        indexA = triangle[0]
+        rangeA = gather_range(indexA, mu_values, ranges)
+        indexB = triangle[1]
+        rangeB = gather_range(indexB, mu_values, ranges)
+        indexC = triangle[2]
+        rangeC = gather_range(indexC, mu_values, ranges)
+        checkerAB = (rangeA != rangeB)
+        checkerAC = (rangeA != rangeC)
+        checkerCB = (rangeC != rangeB)
+        vertexAB, vertexAC, vertexBC = 0, 0, 0
+        vertex_indexAB, vertex_indexAC, vertex_indexBC,  = 0, 0, 0
+        if (checkerCB or checkerAB or checkerAC):
             
+            triangles_to_keep_mask[i] = 0
+            if (checkerAB):
+                if (rangeA > rangeB):
+                    new_muAB = ranges[rangeB + 1]
+                else:
+                    new_muAB = ranges[rangeA + 1]
+                vertexAB = create_new_vertex(vertices, indexA, indexB, mu_values, new_muAB)
+                new_vertices[new_vertices_counter] = vertexAB
+                vertex_indexAB = new_vertices_counter
+                new_vertices_counter += 1
+                
+            if (checkerAC):
+                if (rangeA > rangeC):
+                    new_muAC = ranges[rangeC + 1]
+                else:
+                    new_muAC = ranges[rangeA + 1]
+                vertexAC = create_new_vertex(vertices, indexA, indexC, mu_values, new_muAC)
+                new_vertices[new_vertices_counter] = vertexAC
+                vertex_indexAC = new_vertices_counter
+                new_vertices_counter += 1
+                
+            if (checkerCB):
+                if (rangeB > rangeC):
+                    new_muBC = ranges[rangeC + 1]
+                else:
+                    new_muBC = ranges[rangeB + 1]
+                vertexBC = create_new_vertex(vertices, indexB, indexC, mu_values, new_muBC)
+                new_vertices[new_vertices_counter] = vertexBC
+                vertex_indexBC = new_vertices_counter
+                new_vertices_counter += 1
+
+            new_triangles[new_triangles_counter : new_triangles_counter + 3] = alter_connections(vertex_indexAB,
+                               vertex_indexBC, vertex_indexAC, triangle, checkerAB, checkerAC)
+            new_triangles_counter += 3
+            
+    return triangles_to_keep_mask, new_triangles, new_vertices, new_triangles_counter, new_vertices_counter
+
+def alter_connections(vertex_indexAB, vertex_indexBC, vertex_indexAC,
+                       triangle, checkerAB, checkerAC):
+    A, B, C = triangle[0], triangle[1], triangle[2]
+    AB = vertex_indexAB
+    BC = vertex_indexBC
+    AC = vertex_indexAC
+
+    if(checkerAB and checkerAC): #BC common range
+        triangle1 = np.array([A, AB, AC])
+        triangle2 = np.array([B, AB, C])
+        triangle3 = np.array([C, AC, AB])
+        
+    elif(checkerAB and not checkerAC): #AC common range
+        triangle1 = np.array([A, C, AB])
+        triangle2 = np.array([C, BC, AB])
+        triangle3 = np.array([B, AB, BC])
+        
+    elif(not checkerAB and checkerAC): #AB common range
+        triangle1 = np.array([A, B, AC])
+        triangle2 = np.array([B, AC, BC])
+        triangle3 = np.array([C, AC, BC])
+
+    return triangle1, triangle2, triangle3
+
+
+
+
+
+
 
 
 def create_new_vertex(vertices, vertex_index, neighbour, mu_values, new_mu):
@@ -75,9 +136,8 @@ def create_new_vertex(vertices, vertex_index, neighbour, mu_values, new_mu):
         p_x = ((point1[0] * (mu2 - new_mu)) + (point2[0] * (new_mu - mu1))) / (mu2 - mu1)
         p_y = ((point1[1] * (mu2 - new_mu)) + (point2[1] * (new_mu - mu1))) / (mu2 - mu1)
         p_z = ((point1[2] * (mu2 - new_mu)) + (point2[2] * (new_mu - mu1))) / (mu2 - mu1)
-    return np.array([p_x, p_y, p_z])
-    #Then you need to resize the vertices, and change the triangles accordingly
-    #Good Fucking Luck with that, buddy.
+    return np.array((p_x[0], p_y[0], p_z[0]))
+    
 
     
 
