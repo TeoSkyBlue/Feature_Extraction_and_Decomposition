@@ -20,15 +20,52 @@ def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, mrg
     
 
     #Resampling Logic
-
+    old_triangle_num = len(triangles)
+    old_vertices_num = len(vertices)
     # This kinda sucks, I know, sorry.
     triangles_to_keep_mask, new_triangles, new_vertices, new_triangles_counter, new_vertices_counter = resample_inbetweens(vertices, triangles, A_matrix, mu_values, ranges)
     #add new vertices to data structure
-    np.vstack((vertices, new_vertices[0:new_vertices_counter]))
+    vertices_rsd = np.vstack((vertices, new_vertices[0:new_vertices_counter]))
     #remove obsolete triangles from data structure
     triangles = triangles[triangles_to_keep_mask]
     #add the new triangles
-    np.vstack((triangles, new_triangles[0:new_triangles_counter]))
+    triangles_rsd = np.vstack((triangles, new_triangles[0:new_triangles_counter]))
+
+    print("Number of triangles changed from ",old_triangle_num, " to ", len(triangles_rsd))
+    print("Number of vertices changed from ",old_vertices_num, " to ", len(vertices_rsd))
+
+    A_matrix_rsd = adjacency_matrix(triangles)
+
+    #Missing checker logic to ensure intended behaviour in 
+    #resampling.
+
+    create_Tsets()
+
+
+
+def create_Tsets(vertices, mu_values, ranges, FINEST_RES):
+    point_ranges = -np.ones(len(vertices), dtype = np.float32)
+    info = np.ones(len(vertices), dtype = np.int8)
+    edged_counter = 0
+    for i in range(len(vertices)):
+        range_slot = gather_range(i, mu_values, ranges)
+        range = ranges[range_slot]
+        mu_value = mu_values[i]
+        if(range == mu_value and range != 0):
+            info[i] = 2
+            edged_counter += 1
+
+    lens = np.zeros(FINEST_RES)
+    i = 0 
+    while (i < len(info))
+
+    #for all points
+    #get point range
+    #get mu_value
+    #if range == muValue and range != 0
+    #-> the point's info = 2
+    
+    #otherwise, its info is one
 
 
 def resample_inbetweens(vertices, triangles, A_matrix, mu_values, ranges):
@@ -163,4 +200,5 @@ def gather_range(point_index, mu_values, ranges):
     
 
 if __name__ == "__main__":
-    gather_range(8, np.arange(10), np.arange(10))
+    pass
+    # gather_range(8, np.arange(10), np.arange(10))
