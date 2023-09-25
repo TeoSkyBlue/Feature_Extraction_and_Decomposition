@@ -563,11 +563,11 @@ class AppWindow:
             ##Shortcut edges are ommited, estimation error increased.
             # U.add_shortcut_edges(self.triangles, self.vertices)
             ta_timer_start = time.process_time()
-            mu_values, A_matrix = mud.geodesic_dijkstra(self.vertices, self.triangles, S_area)
+            mu_values, A_matrix, base_vertices_num, r_threshold = mud.geodesic_dijkstra(self.vertices, self.triangles, S_area)
             ta_timer_end = time.process_time()
-
+            
             rbe_timer_start = time.process_time()
-            rbe.geodesic_reeb_graph_extraction(mu_values, A_matrix, self.vertices, self.triangles, mrg_num = 10)
+            rbe.geodesic_reeb_graph_extraction(mu_values, A_matrix, self.vertices, self.triangles, base_vertices_num, r_threshold, mrg_num = 10)
             rbe_timer_end = time.process_time()
             print("Wait, that worked?Well, it took", ta_timer_end - ta_timer_start, " seconds you know..")
             print("Rbe took you back by ", rbe_timer_end - rbe_timer_start, " seconds")

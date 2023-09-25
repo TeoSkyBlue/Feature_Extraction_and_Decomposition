@@ -1,12 +1,14 @@
 from mu_distances import *
 from rb_graph_class import *
+import kmapper as km
+import sklearn
 
 #Construct a multiresolutional Reeb Graph given the mesh and its 
 #mu values
-def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, mrg_num):
+def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, base_vertices_num, r_threshold, mrg_num):
     FINEST_RES = mrg_num
     percentage_threshold = 0.01
-    all_t_sets = []
+    
     tsets = []
     
     ranges = []
@@ -22,6 +24,7 @@ def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, mrg
     #Resampling Logic
     old_triangle_num = len(triangles)
     old_vertices_num = len(vertices)
+    #Resampling Function
     # This kinda sucks, I know, sorry.
     triangles_to_keep_mask, new_triangles, new_vertices, new_triangles_counter, new_vertices_counter = resample_inbetweens(vertices, triangles, A_matrix, mu_values, ranges)
     #add new vertices to data structure
@@ -33,39 +36,96 @@ def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, mrg
 
     print("Number of triangles changed from ",old_triangle_num, " to ", len(triangles_rsd))
     print("Number of vertices changed from ",old_vertices_num, " to ", len(vertices_rsd))
+    morse_function = mu_values
 
     A_matrix_rsd = adjacency_matrix(triangles)
+
+    all_Tsets = np.empty((FINEST_RES, 100, len(vertices_rsd)))
+    #ALL_TSETS[FINEST_RES][number_of_sets][number_of_triangles_in_set]
 
     #Missing checker logic to ensure intended behaviour in 
     #resampling.
 
-    create_Tsets()
+    #create_Tsets()
 
 
 
-def create_Tsets(vertices, mu_values, ranges, FINEST_RES):
+def create_Tsets(vertices, mu_values, ranges, FINEST_RES, all_Tsets):
     point_ranges = -np.ones(len(vertices), dtype = np.float32)
     info = np.ones(len(vertices), dtype = np.int8)
-    edged_counter = 0
+    border_counter = 0
     for i in range(len(vertices)):
         range_slot = gather_range(i, mu_values, ranges)
         range = ranges[range_slot]
         mu_value = mu_values[i]
         if(range == mu_value and range != 0):
             info[i] = 2
-            edged_counter += 1
+            border_counter += 1
+    print("Bordered vertices: ", border_counter)
 
     lens = np.zeros(FINEST_RES)
     i = 0 
-    while (i < len(info))
-
-    #for all points
-    #get point range
-    #get mu_value
-    #if range == muValue and range != 0
-    #-> the point's info = 2
     
-    #otherwise, its info is one
+    while (i < len(info)):
+        if (info[i] == 0):
+            i+= 1
+
+        elif (info[i] == 1):
+            rang = gather_range(i)
+            one_set = create_one_Tset(i, rang)
+            one_range_Tsets = all_Tsets[rang]
+
+            #resizing one_range_tsets
+            one_range_Tsets[lens[rang]] = one_set
+
+            all_Tsets[rang] = one_range_Tsets
+
+
+        elif (info[i] == 2 or info[i] == 3):
+            rang = gather_range(i) - 1
+            one_set = create_one_Tset(i, rang)
+            one_range_Tsets = all_Tsets[rang]
+
+            #resizing one_range_tsets
+            one_range_Tsets[lens[rang]] = one_set
+
+            all_Tsets[rang] = one_range_Tsets
+
+    return all_Tsets #you can Trim the tsets if need be.
+
+
+#     #for all points
+#     #get point range
+#     #get mu_value
+#     #if range == muValue and range != 0
+#     #-> the point's info = 2
+    
+#     #otherwise, its info is one
+
+def create_one_Tset(point_index, range, vertices, info):
+    #will need to trim tset so that we dont have
+    #gianormous data structures, but what can you do, really
+    tset = np.zeros(len(vertices))
+    tset_length = 0
+    real_range = 0
+    index = point_index
+    stacker = []
+    if(info[point_index] > 0):
+        stacker.append(index)
+    
+    while(len(stacker) != 0):
+        temp = stacker.pop(0)
+        if(create_one_point(index, range) == True):
+            #expansions of tset
+            tset[tset_length] = index
+            tset_length += 1
+    #trim tset
+    return tset
+
+
+def create_one_point():
+    pass
+
 
 
 def resample_inbetweens(vertices, triangles, A_matrix, mu_values, ranges):
@@ -180,7 +240,7 @@ def create_new_vertex(vertices, vertex_index, neighbour, mu_values, new_mu):
 
 
 #nice little numpy handling of the original implementation.
-#Gets the mu range of input vertex
+#Gets the mu range index of input vertex
 def gather_range(point_index, mu_values, ranges):
     #relative tolerance should be way lower than atol 
     #when handling values that go near 0

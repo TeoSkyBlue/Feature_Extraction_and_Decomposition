@@ -94,7 +94,7 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     print("Total Heap restructuring time:", heap_restructuring_time)
     print("Total cpu time for Base Area Calculations: ", base_area_timer)
     print("Total cpu time for shortest path timer: ", shortest_path_timer)
-    return normed_mu, A_matrix
+    return normed_mu, A_matrix, len(base_points), r_threshold
 
     
 
@@ -300,6 +300,18 @@ def calculateTrigArea(A, B, C):
 def decrease_key(VLIST, neighbour_index, distance_check):
     KEY = 0
     INDEX = 1
+    #Cheapo numpy bullshit, thank god it doesnot work I would go nuts.
+    # vlist_numpy = np.array(VLIST)
+    # if(len(vlist_numpy) > 0):
+    #     index_in_heap = np.where(vlist_numpy[:, 1] == neighbour_index)[0]
+    #     if(index_in_heap):
+    #         index_in_heap = index_in_heap[0]
+    #         if(VLIST[index_in_heap][KEY] > distance_check):
+    #             VLIST[index_in_heap][KEY] = distance_check
+    #             heapq._siftup(VLIST, index_in_heap)
+    # return            
+    #Old logic
+    
     vlist_index = 0
     for item in VLIST:
         if (item[INDEX] == neighbour_index):
