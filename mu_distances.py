@@ -6,13 +6,13 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     
     INF = 100000
     vertlen = len(vertices)
-    r_threshold = np.sqrt(0.01 * S_area)
+    r_threshold = np.sqrt(0.005 * S_area)
     print("r:", r_threshold)
     A_matrix = adjacency_matrix(triangles)
     # base_areas = np.zeros(10)
    
     unvisited_vertices = np.ones(vertlen, dtype = np.int8) #idxs of visited vertices
-    base_default = 200
+    base_default = 300
 
     g_values = -np.ones((base_default, vertlen), dtype = np.float128)
     mu_values = np.empty(vertlen, dtype = np.float128)
@@ -55,9 +55,8 @@ def geodesic_dijkstra(vertices, triangles, S_area):
             if(base_points_length >= (len(base_points) - 1)):
                 #weird expansions
                 print("You're getting cooked.")
-                npt.expand_base_empty(base_points, 1)
-                npt.expand_base_empty(base_areas, 1)
-                npt.expand_rows(g_values, 1)
+                break
+
 
             #Contrast to the original implementation, we use the index to represent base. 
             base_points[base_points_length] = temp_int #was temporary_point
@@ -87,7 +86,7 @@ def geodesic_dijkstra(vertices, triangles, S_area):
     
     #We normalize with denominator max (as opposed to max - min) for 
     #less inaccuracy with smaller values
-    normed_mu = (mu_values - np.min(mu_values)) / np.max(mu_values)
+    normed_mu = (mu_values - np.min(mu_values)) / (np.max(mu_values) - np.min(mu_values))
     # normalize_mu(mu_values)
     print("Total number of base points:", base_points_length)
 
@@ -113,9 +112,12 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
 
     #VLIST is 2D, [[key = value, index = vertex_index]]
     VLIST[base_vertex_index][0] = 0
-    heapq.heapify(VLIST)
+    iconv = [i for i in range(vertlen)]
+
+    # heapq.heapify(VLIST)
     while(len(VLIST)):
-        smallest = heapq.heappop(VLIST)
+        # smallest = heapq.heappop(VLIST)
+        smallest = converter_heappop(VLIST, iconv)
         g_V = smallest[KEY]
 
         if(g_bu[smallest[INDEX]] > smallest[KEY]):
@@ -131,11 +133,9 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
                 g_bu[neighbour] = g_V + length_VVa
 
             #Decrease Key:
-            #This method has linear search accross large heap, 
-            #But I believe the converter idea is equally stinky.
             heap_time_start = time.process_time()
 
-            decrease_key(VLIST, neighbour, g_bu[neighbour])
+            decrease_key(VLIST, neighbour, g_bu[neighbour], iconv)
             
             heap_time_end = time.process_time()
             heap_restructuring_time += heap_time_end - heap_time_start
@@ -297,37 +297,94 @@ def calculateTrigArea(A, B, C):
     return area
 
 
-def decrease_key(VLIST, neighbour_index, distance_check):
+def decrease_key(VLIST, neighbour_index, distance_check, iconv):
     KEY = 0
     INDEX = 1
-    #Cheapo numpy bullshit, thank god it doesnot work I would go nuts.
-    # vlist_numpy = np.array(VLIST)
-    # if(len(vlist_numpy) > 0):
-    #     index_in_heap = np.where(vlist_numpy[:, 1] == neighbour_index)[0]
-    #     if(index_in_heap):
-    #         index_in_heap = index_in_heap[0]
-    #         if(VLIST[index_in_heap][KEY] > distance_check):
-    #             VLIST[index_in_heap][KEY] = distance_check
-    #             heapq._siftup(VLIST, index_in_heap)
-    # return            
-    #Old logic
+
+    vlist_index = iconv[neighbour_index]
+    vlist_len = len(VLIST)
+    if(vlist_len > 0 and vlist_index < vlist_len):
+        if(VLIST[vlist_index][KEY] > distance_check):
+            VLIST[vlist_index][KEY] = distance_check                
+            converter_siftup(VLIST, vlist_index, iconv)  
     
-    vlist_index = 0
-    for item in VLIST:
-        if (item[INDEX] == neighbour_index):
-            if(VLIST[vlist_index][KEY] > distance_check):
-                VLIST[vlist_index][KEY] = distance_check
-                heapq._siftup(VLIST, vlist_index)
-                # heapq.heapify(VLIST)
-            break
-        vlist_index += 1
     return
+
+
+    # vlist_index = 0
+    # for item in VLIST:
+    #     if (item[INDEX] == neighbour_index):
+    #         if(VLIST[vlist_index][KEY] > distance_check):
+    #             VLIST[vlist_index][KEY] = distance_check
+    #             # heapq._siftup(VLIST, vlist_index)
+                
+    #             # heapq.heapify(VLIST)
+    #         break
+    #     vlist_index += 1
+    # return
 
 def calculate_mu(g_values, base_points_length, point_index, base_areas):
     value = 0 
     for base_i in range(base_points_length):
         value = value + g_values[base_i][point_index] * base_areas[base_i]
     return value
+
+
+def converter_siftup(heap, pos, iconv):
+    V_INDEX = 1 # each heap element has 2 values, the value of the vertex index is at pos 1
+    endpos = len(heap)
+    startpos = pos
+    newitem = heap[pos]
+    # Bubble up the smaller child until hitting a leaf.
+    childpos = 2*pos + 1    # leftmost child position
+    while childpos < endpos:
+        # Set childpos to index of smaller child.
+        rightpos = childpos + 1
+        if rightpos < endpos and not heap[childpos] < heap[rightpos]:
+            childpos = rightpos
+        # Move the smaller child up.
+        heap[pos] = heap[childpos]
+        iconv[heap[pos][V_INDEX]] = pos
+        pos = childpos
+        childpos = 2*pos + 1
+    # The leaf at pos is empty now.  Put newitem there, and bubble it up
+    # to its final resting place (by sifting its parents down).
+    heap[pos] = newitem
+    iconv[newitem[V_INDEX]] = pos
+    converter_siftdown(heap, startpos, pos, iconv)
+
+
+def converter_siftdown(heap, startpos, pos, iconv):
+    V_INDEX = 1
+    newitem = heap[pos]
+    # Follow the path to the root, moving parents down until finding a place
+    # newitem fits.
+    while pos > startpos:
+        parentpos = (pos - 1) >> 1
+        parent = heap[parentpos]
+        if newitem < parent:
+            heap[pos] = parent
+            iconv[parent[V_INDEX]] = pos
+            pos = parentpos
+            continue
+        break
+    heap[pos] = newitem
+    iconv[newitem[V_INDEX]] = pos
+
+def converter_heappop(heap, iconv):
+    """Pop the smallest item off the heap, maintaining the heap invariant."""
+    V_INDEX = 1
+    iconv[heap[0][V_INDEX]] = len(heap) + 1
+    lastelt = heap.pop()    # raises appropriate IndexError if heap is empty
+    if heap:
+        returnitem = heap[0]
+        heap[0] = lastelt
+        iconv[lastelt[V_INDEX]] = 0
+        converter_siftup(heap, 0, iconv)
+        return returnitem
+    return lastelt
+
+
 
 def normalize_mu():
     pass

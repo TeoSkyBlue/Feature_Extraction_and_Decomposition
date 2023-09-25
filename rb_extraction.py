@@ -3,6 +3,7 @@ from rb_graph_class import *
 import kmapper as km
 import sklearn
 
+
 #Construct a multiresolutional Reeb Graph given the mesh and its 
 #mu values
 def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, base_vertices_num, r_threshold, mrg_num):
@@ -40,7 +41,29 @@ def geodesic_reeb_graph_extraction(mu_values, A_matrix, vertices, triangles, bas
 
     A_matrix_rsd = adjacency_matrix(triangles)
 
-    all_Tsets = np.empty((FINEST_RES, 100, len(vertices_rsd)))
+    geometry_rsd = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices_rsd), o3d.utility.Vector3iVector(triangles_rsd))
+    
+    # for triangle in triangles_rsd:
+    #     triangles_range_values = gather_range(mu_values, triangle[0])
+
+    ranged_triangles = []
+    triangles_in_range = np.empty(len(triangles_rsd))
+    #range raming scheme is a tiny bit unfortunate, yes.
+    for triangle in range(len(triangles_in_range)):
+        triangles_in_range[triangle] = gather_range(triangles_rsd[triangle][0], mu_values, ranges)
+    
+    tset_geometries = []
+    for range_value in range(len(ranges) - 1):
+        ranged_triangles.append(np.where(triangles_in_range == range_value)[0])                                             #of the resampled triangles, get the ones that are on the range range_value
+        tset_geometry = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices_rsd), o3d.utility.Vector3iVector(triangles_rsd[ranged_triangles[range_value]]))
+        tset_geometries.append(tset_geometry)
+    
+    MRG = []
+    for tset in tset_geometries:
+        Rnodes = tset.cluster_connected_triangles()
+        MRG.append(Rnodes)
+
+    # all_Tsets = np.empty((FINEST_RES, 100, len(vertices_rsd)))
     #ALL_TSETS[FINEST_RES][number_of_sets][number_of_triangles_in_set]
 
     #Missing checker logic to ensure intended behaviour in 
@@ -244,7 +267,7 @@ def create_new_vertex(vertices, vertex_index, neighbour, mu_values, new_mu):
 def gather_range(point_index, mu_values, ranges):
     #relative tolerance should be way lower than atol 
     #when handling values that go near 0
-    if np.isclose(mu_values[point_index], 1, rtol = 1e-8, atol = 1e-6):
+    if (np.isclose(mu_values[point_index], 1)):
         return len(ranges) - 2
     left_range = ranges[0:-1]
     right_range = ranges[1:]

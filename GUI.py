@@ -575,7 +575,7 @@ class AppWindow:
 def main():
 
     gui.Application.instance.initialize()
-
+    o3d.utility.set_verbosity_level(o3d.cpu.pybind.utility.VerbosityLevel.Debug)
     w = AppWindow(1024, 768)
 
     if len(sys.argv) > 1:

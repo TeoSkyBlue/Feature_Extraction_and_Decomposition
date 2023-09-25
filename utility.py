@@ -7,7 +7,7 @@ from scipy.sparse import csr_matrix, lil_matrix, diags, eye
 from scipy.sparse.linalg import eigs, eigsh
 from scipy.linalg import eig
 from random import sample
-import heapq
+# import heapq
 import time
 
 
