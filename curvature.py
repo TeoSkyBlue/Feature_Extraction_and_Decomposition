@@ -1,18 +1,18 @@
 import numpy as np
 
 def ProjectCurvatureTensor(uf, vf, nf, old_ku, old_kuv, old_kv, up, vp):
-	'''
-	ProjectCurvatureTensor performs a projection
-	of the tensor variables to the vertexcoordinate system
-	INPUT :
-	uf, vf : face coordinates system
-	old_ku, old_kuv, old_kv : face curvature tensor variables
-	up, vp : vertex cordinate system
-	nf : face normal
-	OUTPUT :
-	new_ku,new_kuv,new_kv : vertex curvature tensor coordinates
-	The tensor : [[new_ku, new_kuv], [new_kuv, new_kv]]
-	'''
+	
+	# ProjectCurvatureTensor performs a projection
+	# of the tensor variables to the vertexcoordinate system
+	# INPUT :
+	# uf, vf : face coordinates system
+	# old_ku, old_kuv, old_kv : face curvature tensor variables
+	# up, vp : vertex cordinate system
+	# nf : face normal
+	# OUTPUT :
+	# new_ku,new_kuv,new_kv : vertex curvature tensor coordinates
+	# The tensor : [[new_ku, new_kuv], [new_kuv, new_kv]]
+	
 	r_new_u, r_new_v = RotateCoordinateSystem(up, vp, nf)
 	OldTensor = np.array([[old_ku, old_kuv], [old_kuv, old_kv]])
 	u1 = np.dot(r_new_u, uf)
@@ -36,7 +36,7 @@ def CalcCurvature(FV, VertexNormals, FaceNormals, Avertex, Acorner, up, vp):
 	VertexNoRMALS - n*3 matrix ( n = number of vertices ) containing the normal at each vertex
 	FaceNormals - m*3 matrix ( m = number of faces ) containing the normal of each face
 	
-	OUTPOUT
+	OUTPUT
 	FaceSFM - an m*1 cell matrix second fundemental
 	VertexSFM - an n*w cell matrix second fundemental
 	wfp - corner voronoi weights """
@@ -49,12 +49,12 @@ def CalcCurvature(FV, VertexNormals, FaceNormals, Avertex, Acorner, up, vp):
 		VertexSFM.append([[0, 0], [0, 0]])
 	Kn = np.zeros((1, FV.triangles.shape[0]))
 	
-	" Get all the edge vectors "
+	# Get all the edge vectors
 	e0 = FV.vertices[FV.triangles[:, 2], :] - FV.vertices[FV.triangles[:, 1], :]
 	e1 = FV.vertices[FV.triangles[:, 0], :] - FV.vertices[FV.triangles[:, 2], :]
 	e2 = FV.vertices[FV.triangles[:, 1], :] - FV.vertices[FV.triangles[:, 0], :]
 	
-	" Normalize edge vectors "
+	# Normalize edge vectors 
 	e0_norm = normr(e0)
 	# e1_norm = normr(e1)
 	# e2_norm = normr(e2)

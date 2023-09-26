@@ -15,6 +15,9 @@ import time
 import utility as U
 import curvature as crv
 
+#Reeb Graph Segmentation Dependencies
+import reeb_graph_segmentation as rgs
+
 #Topology Matching Dependencies
 import mu_distances as mud
 import rb_extraction as rbe
@@ -167,8 +170,10 @@ class AppWindow:
         #unit_sphere_normalization
         norm = np.max((vertices * vertices).sum(-1))
         vertices = vertices / np.sqrt(norm)
+        processed_geometry = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(triangles))
+        subdivided_geometry = processed_geometry.subdivide_midpoint(number_of_iterations = 2)
 
-        return o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(triangles))
+        return subdivided_geometry 
 
     def _find_match(self, query):
 
@@ -265,6 +270,12 @@ class AppWindow:
         elif event.key == 114 and event.type == KeyEvent.Type.UP:
             self._calc_eigenvectors()
             print("eigenvectors calculated.")
+            return gui.Widget.EventCallbackResult.HANDLED
+
+        #K key - mesh segmentation
+        elif event.key == 107 and event.type == KeyEvent.Type.UP:
+            print("mesh segmentation")
+            self._mesh_segmentation()
             return gui.Widget.EventCallbackResult.HANDLED
 
         #left or bottom arrow keys - decrease eigenvector counter
@@ -512,7 +523,6 @@ class AppWindow:
         if self.geometry is not None:
             point_cloud = o3d.geometry.PointCloud(self.geometry.vertices)
             point_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius = 0.06,  max_nn=60))
-
             self.geometry = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(
             point_cloud, o3d.utility.DoubleVector(radii))
 
@@ -535,7 +545,7 @@ class AppWindow:
             print(f'L min = {L_min:.2f} L mean = {L_mean:.2f} L max = {L_max:.2f}')
 
             L = 1*L_mean
-            ITER = 3
+            ITER = 2
 
             remesher.isotropic_remeshing(
                 L, 
@@ -567,10 +577,34 @@ class AppWindow:
             ta_timer_end = time.process_time()
             
             rbe_timer_start = time.process_time()
-            rbe.geodesic_reeb_graph_extraction(mu_values, A_matrix, self.vertices, self.triangles, base_vertices_num, r_threshold, mrg_num = 10)
+            rbe.geodesic_reeb_graph_extraction(mu_values, A_matrix, self.vertices, self.triangles, base_vertices_num, r_threshold, mrg_num = 8)
             rbe_timer_end = time.process_time()
             print("Wait, that worked?Well, it took", ta_timer_end - ta_timer_start, " seconds you know..")
             print("Rbe took you back by ", rbe_timer_end - rbe_timer_start, " seconds")
+
+
+    def _mesh_segmentation(self):
+        if self.geometry is not None:
+            res,candidate_cut_set, color_list, reeb_graphs = rgs.mesh_segmentation(self.vertices, self.geometry, t_param = 30, resolution = 50, convexity_measure = 8, save_graphs = True)
+            selected_cuts = res.x
+            print(selected_cuts)
+            colors = np.ones((len(self.vertices), 3)) * 0.6
+            colored_clusters = 0
+            counter = 0
+            for iter, reeb_graph in enumerate(candidate_cut_set):
+                for j_iter, cut in enumerate(reeb_graph):
+                    
+                    if (selected_cuts[counter] > 0.49):
+                        color_pick = color_list[int(np.random.choice(len(color_list), 1))]
+                        colors[reeb_graphs[iter]['nodes'][cut]] = color_pick
+                        colored_clusters += 1
+                    counter += 1
+            print(f'Now colored {colored_clusters} clusters!')
+            self.geometry.vertex_colors = o3d.utility.Vector3dVector(colors)
+            self._redraw_scene()
+            print("Painted selected cuts.")
+            # self.geometry.paint_uniform_color([0, 0, 1])
+            
 
 def main():
 
