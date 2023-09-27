@@ -1,5 +1,5 @@
 from utility import *
-
+from scipy.spatial.distance import cdist
 
 
 def geodesic_dijkstra(vertices, triangles, S_area):
@@ -63,10 +63,13 @@ def geodesic_dijkstra(vertices, triangles, S_area):
 
             minHeapVLIST = [[INF, vertex_index] for vertex_index in range(vertlen)]
             
+            # Compute pairwise distances between all vertices
+            dist_matrix = cdist(vertices, vertices)
+
             shortest_path_timer_start = time.process_time()
             #populate base point row with its g_values
             g_values[base_points_length, : vertlen], heap_restructuring_time, base_area_timer = calculateShortestPath(temp_int, minHeapVLIST, vertlen, A_matrix,
-                                                                  vertices, triangles, r_threshold, unvisited_vertices,
+                                                                  dist_matrix, vertices, triangles, r_threshold, unvisited_vertices,
                                                                     base_areas, base_points_length, debug_counters,
                                                                       heap_restructuring_time, base_area_timer)
             shortest_path_timer_end = time.process_time()
@@ -85,8 +88,8 @@ def geodesic_dijkstra(vertices, triangles, S_area):
         mu_values[value_index] = calculate_mu(g_values, base_points_length, value_index, base_areas)
     
     #We normalize with denominator max (as opposed to max - min) for 
-    #less inaccuracy with smaller values
-    normed_mu = (mu_values - np.min(mu_values)) / (np.max(mu_values) - np.min(mu_values))
+    #less inaccuracy with smaller values, supposedly.
+    normed_mu = (mu_values - np.min(mu_values)) / np.max(mu_values)
     # normalize_mu(mu_values)
     print("Total number of base points:", base_points_length)
 
@@ -100,8 +103,10 @@ def geodesic_dijkstra(vertices, triangles, S_area):
 
 
 
+
+
 def calculateShortestPath(base_vertex_index, VLIST, vertlen,
-                           A_matrix, vertices, triangles, r_threshold,
+                           A_matrix, dist_matrix, vertices, triangles, r_threshold,
                              unvisited_vertices, base_areas, base_points_length,
                                debug_counters, heap_restructuring_time, base_area_timer):
     #Initialize g(u) to infinity for all indexes
@@ -114,6 +119,7 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
     VLIST[base_vertex_index][0] = 0
     iconv = [i for i in range(vertlen)]
 
+
     # heapq.heapify(VLIST)
     while(len(VLIST)):
         # smallest = heapq.heappop(VLIST)
@@ -123,14 +129,14 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
         if(g_bu[smallest[INDEX]] > smallest[KEY]):
             g_bu[smallest[INDEX]] = smallest[KEY]
 
+        # Update g_bu using distance matrix
         neighbours_u = A_matrix[smallest[INDEX], :].toarray()
         neighbours_u = neighbours_u.nonzero()[1]
         for neighbour in neighbours_u:
-            length_VVa = np.linalg.norm(vertices[smallest[INDEX]] - vertices[neighbour])
             g_Va = g_bu[neighbour]
             #Main check
-            if(g_Va > g_V + length_VVa):
-                g_bu[neighbour] = g_V + length_VVa
+            if(g_Va > g_V + dist_matrix[smallest[INDEX], neighbour]):
+                g_bu[neighbour] = g_V + dist_matrix[smallest[INDEX], neighbour]
 
             #Decrease Key:
             heap_time_start = time.process_time()
@@ -139,10 +145,6 @@ def calculateShortestPath(base_vertex_index, VLIST, vertlen,
             
             heap_time_end = time.process_time()
             heap_restructuring_time += heap_time_end - heap_time_start
-
-            # if (VLIST[neighbour][KEY] < g_bu[neighbour]):
-            #     VLIST[neighbour][KEY] = g_bu[neighbour]
-            #     heapq.heapify(VLIST)
 
     # base_ver = vertices[base_vertex_index]
     # create array of vertices in the area

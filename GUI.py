@@ -171,9 +171,9 @@ class AppWindow:
         norm = np.max((vertices * vertices).sum(-1))
         vertices = vertices / np.sqrt(norm)
         processed_geometry = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(triangles))
-        subdivided_geometry = processed_geometry.subdivide_midpoint(number_of_iterations = 2)
+        # processed_geometry = processed_geometry.subdivide_midpoint(number_of_iterations = 2)
 
-        return subdivided_geometry 
+        return processed_geometry
 
     def _find_match(self, query):
 
