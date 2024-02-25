@@ -1,5 +1,5 @@
-# Feature_Extraction_and_Matching
- Part of coursework for 'Computational Geometry and Computer Vision' in 8th semester of Electrical and Computer Engineering dep. of University of Patras. 
+- Feature_Extraction_and_Matching(not quite)
+Part of coursework for 'Computational Geometry and Computer Vision' in 8th semester of Electrical and Computer Engineering dep. of University of Patras. 
 
 
  The project is now considered end of life, it is provided as is, should really not be used for anything that amounts to anything as it is largely incomplete.
