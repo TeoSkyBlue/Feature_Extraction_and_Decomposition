@@ -5,15 +5,15 @@ Part of coursework for 'Computational Geometry and Computer Vision' in 8th semes
  The project is now considered end of life, it is provided as is, should really not be used for anything that amounts to anything as it is largely incomplete.
  Within the repo exists some Feature Extraction functionality using python's open3d library
 This includes: 
-    - Pointcloud triangulation using existing open3d functionality
-    - Convex hull
-    - The visualization of curvature, delta coordinates, eigenvectors and 
+    -Pointcloud triangulation using existing open3d functionality
+    -Convex hull
+    -The visualization of curvature, delta coordinates, eigenvectors and 
     the integral of the geodesic distance
-    - Isotropic Remeshing(forked from other repo by @sfcaracciolo)
-    - Reeb Graph extraction
-    - Nearest neighbour tree-based algorithms
-    - Dijkstra approach on graph least distances
-    - Mesh segmentation using the Reeb Graphs extracted, an approach 
+    -Isotropic Remeshing(forked from other repo by @sfcaracciolo)
+    -Reeb Graph extraction
+    -Nearest neighbour tree-based algorithms
+    -Dijkstra approach on graph least distances
+    -Mesh segmentation using the Reeb Graphs extracted, an approach 
     based on the work of Hairong Liu, Wenyu Liu, Longin Jan Latecki, 'Convex Shape Decomposition' (2010)
 
 As you can see, there is no matching in the 'included' tab, as that was never finished, its files remain
